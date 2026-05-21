@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>ESP32 LED Blink Simulator</title>
+
+<style>
+    body {
+        margin: 0;
+        background: #0f172a;
+        color: white;
+        font-family: Arial, sans-serif;
+        overflow: hidden;
+    }
+
+    .topbar {
+        height: 60px;
+        background: #111827;
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        gap: 10px;
+        border-bottom: 1px solid #1e293b;
+    }
+
+    button {
+        background: #2563eb;
+        border: none;
+        color: white;
+        padding: 10px 18px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    button:hover {
+        background: #1d4ed8;
+    }
+
+    .container {
+        display: flex;
+        height: calc(100vh - 60px);
+    }
+
+    .left-panel {
+        width: 300px;
+        background: #111827;
+        border-right: 1px solid #1e293b;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+
+    .right-panel {
+        flex: 1;
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .code-box {
+        background: #0b1220;
+        padding: 15px;
+        border-radius: 10px;
+        font-family: monospace;
+        white-space: pre;
+        overflow-x: auto;
+        line-height: 1.5;
+        color: #7dd3fc;
+        border: 1px solid #1e293b;
+    }
+
+    .board {
+        width: 500px;
+        height: 250px;
+        background: #1e293b;
+        border-radius: 20px;
+        position: relative;
+        box-shadow: 0 0 40px rgba(0,0,0,0.5);
+    }
+
+    .esp-label {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        font-size: 24px;
+        font-weight: bold;
+        color: #94a3b8;
+    }
+
+    .led {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: #220000;
+        position: absolute;
+        right: 60px;
+        top: 100px;
+        box-shadow: 0 0 10px rgba(255,0,0,0.2);
+        transition: all 0.1s ease;
+    }
+
+    .led.on {
+        background: red;
+        box-shadow:
+            0 0 20px red,
+            0 0 40px red,
+            0 0 60px red;
+    }
+
+    .gpio-label {
+        position: absolute;
+        right: 55px;
+        top: 160px;
+        color: #cbd5e1;
+        font-size: 14px;
+    }
+
+    .serial-monitor {
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+        height: 140px;
+        background: #020617;
+        border-top: 1px solid #1e293b;
+        padding: 10px;
+        box-sizing: border-box;
+        overflow-y: auto;
+        font-family: monospace;
+        color: #22c55e;
+    }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+    <button onclick="startBlink()">▶ Run</button>
+    <button onclick="stopBlink()">■ Stop</button>
+</div>
+
+<div class="container">
+
+    <div class="left-panel">
+
+        <h2>Arduino Code</h2>
+
+<div class="code-box">
+void setup() {
+  pinMode(2, OUTPUT);
+}
+
+void loop() {
+  digitalWrite(2, HIGH);
+  delay(500);
+
+  digitalWrite(2, LOW);
+  delay(500);
+}
+</div>
+
+    </div>
+
+    <div class="right-panel">
+
+        <div class="board">
+
+            <div class="esp-label">ESP32 DEVKIT</div>
+
+            <div id="led" class="led"></div>
+
+            <div class="gpio-label">
+                GPIO2 LED
+            </div>
+
+        </div>
+
+        <div class="serial-monitor" id="serial">
+ESP32 Simulator Ready...
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+    let interval = null;
+    let ledState = false;
+
+    const led = document.getElementById("led");
+    const serial = document.getElementById("serial");
+
+    function log(message) {
+        serial.innerHTML += "<br>> " + message;
+        serial.scrollTop = serial.scrollHeight;
+    }
+
+    function setLED(state) {
+        ledState = state;
+
+        if (state) {
+            led.classList.add("on");
+            log("GPIO2 -> HIGH");
+        } else {
+            led.classList.remove("on");
+            log("GPIO2 -> LOW");
+        }
+    }
+
+    function startBlink() {
+
+        if (interval) return;
+
+        log("Starting LED blink simulation...");
+
+        interval = setInterval(() => {
+            setLED(!ledState);
+        }, 500);
+    }
+
+    function stopBlink() {
+
+        clearInterval(interval);
+        interval = null;
+
+        setLED(false);
+
+        log("Simulation stopped.");
+    }
+</script>
+
+</body>
+</html>
