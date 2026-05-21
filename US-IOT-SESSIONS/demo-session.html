@@ -1,395 +1,689 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-
-<title>ESP32 Blockly Simulator</title>
-
+<title>ESP32 Blockly Lab</title>
 <script src="https://unpkg.com/blockly/blockly.min.js"></script>
-
 <style>
-    * {
-        box-sizing: border-box;
-    }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Courier New',monospace;background:#070c1a;color:#e2e8f0;overflow:hidden;height:100vh}
 
-    body {
-        margin: 0;
-        font-family: Arial, sans-serif;
-        background: #0f172a;
-        color: white;
-        overflow: hidden;
-    }
+.topbar{height:50px;background:#0c1426;border-bottom:1px solid #1a2744;display:flex;align-items:center;padding:0 14px;gap:8px}
+.tb-title{margin-left:auto;font-size:11px;color:#3a5070;letter-spacing:.12em;text-transform:uppercase}
 
-    .topbar {
-        height: 60px;
-        background: #111827;
-        border-bottom: 1px solid #1e293b;
-        display: flex;
-        align-items: center;
-        padding: 0 20px;
-        gap: 10px;
-    }
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:5px;cursor:pointer;font:12px 'Courier New',monospace;border:1px solid;transition:all .12s}
+.btn-run{background:#052e16;border-color:#166534;color:#86efac}.btn-run:hover{background:#14532d}
+.btn-stop{background:#200a0a;border-color:#7f1d1d;color:#fca5a5}.btn-stop:hover{background:#450a0a}
+.btn-gen{background:#071430;border-color:#1d4ed8;color:#93c5fd}.btn-gen:hover{background:#1e3a8a}
+.btn-clear{background:#111827;border-color:#1e2d4a;color:#64748b}.btn-clear:hover{color:#94a3b8;border-color:#334155}
 
-    button {
-        background: #2563eb;
-        border: none;
-        color: white;
-        padding: 10px 18px;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 14px;
-    }
+.run-indicator{width:8px;height:8px;border-radius:50%;background:#1f2937;transition:all .2s;margin-left:4px}
+.run-indicator.active{background:#22c55e;box-shadow:0 0 8px #22c55e}
 
-    button:hover {
-        background: #1d4ed8;
-    }
+.main{display:flex;height:calc(100vh - 50px)}
+.left{width:50%;border-right:1px solid #1a2744;display:flex;flex-direction:column}
+.right{width:50%;display:flex;flex-direction:column}
 
-    .main {
-        display: flex;
-        height: calc(100vh - 60px);
-    }
+#blocklyDiv{height:63%;width:100%}
 
-    .left-panel {
-        width: 50%;
-        border-right: 1px solid #1e293b;
-        display: flex;
-        flex-direction: column;
-    }
+.pane-bar{background:#0c1426;border-bottom:1px solid #1a2744;padding:5px 12px;font-size:10px;color:#3a5070;letter-spacing:.1em;text-transform:uppercase;display:flex;align-items:center;gap:7px;user-select:none;flex-shrink:0}
+.dot{width:6px;height:6px;border-radius:50%}
+.dot-green{background:#22c55e}.dot-amber{background:#f59e0b}.dot-blue{background:#3b82f6}
 
-    .right-panel {
-        width: 50%;
-        display: flex;
-        flex-direction: column;
-    }
-
-    #blocklyDiv {
-        height: 60%;
-        width: 100%;
-        background: #111827;
-    }
-
-    .simulator {
-        flex: 1;
-        position: relative;
-        background: #020617;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-
-    .esp32-board {
-        width: 420px;
-        height: 220px;
-        background: #1e293b;
-        border-radius: 20px;
-        position: relative;
-        box-shadow: 0 0 40px rgba(0,0,0,0.5);
-    }
-
-    .board-label {
-        position: absolute;
-        top: 15px;
-        left: 20px;
-        color: #cbd5e1;
-        font-size: 22px;
-        font-weight: bold;
-    }
-
-    .gpio-pin {
-        width: 14px;
-        height: 14px;
-        border-radius: 50%;
-        background: #64748b;
-        position: absolute;
-    }
-
-    .gpio2 {
-        top: 90px;
-        left: 30px;
-    }
-
-    .wire {
-        position: absolute;
-        width: 180px;
-        height: 4px;
-        background: #facc15;
-        top: 96px;
-        left: 44px;
-        border-radius: 5px;
-    }
-
-    .led-container {
-        position: absolute;
-        top: 65px;
-        right: 60px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-
-    .led {
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        background: #220000;
-        transition: all 0.1s ease;
-        box-shadow: 0 0 10px rgba(255,0,0,0.2);
-    }
-
-    .led.on {
-        background: red;
-        box-shadow:
-            0 0 20px red,
-            0 0 40px red,
-            0 0 60px red;
-    }
-
-    .serial-monitor {
-        height: 40%;
-        background: #000;
-        border-top: 1px solid #1e293b;
-        padding: 10px;
-        overflow-y: auto;
-        font-family: monospace;
-        color: #22c55e;
-    }
-
-    .code-output {
-        height: 100%;
-        background: #111827;
-        padding: 15px;
-        overflow: auto;
-        font-family: monospace;
-        color: #7dd3fc;
-        white-space: pre;
-    }
+.serial{flex:1;background:#02040b;padding:10px 13px;overflow-y:auto;font-size:12px;line-height:1.7;min-height:0}
+.sim{height:57%;background:#070c1a;border-bottom:1px solid #1a2744;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.code-out{flex:1;background:#080d1a;padding:11px 13px;overflow:auto;font-size:12px;color:#60a5fa;white-space:pre;line-height:1.65;min-height:0}
 </style>
 </head>
-
 <body>
 
 <div class="topbar">
-    <button onclick="runCode()">▶ Run</button>
-    <button onclick="stopCode()">■ Stop</button>
-    <button onclick="generateCode()">⚡ Generate JS</button>
+  <button class="btn btn-run" onclick="runCode()">▶ Run</button>
+  <button class="btn btn-stop" onclick="stopCode()">■ Stop</button>
+  <button class="btn btn-gen" onclick="generateCode()">⚡ JS</button>
+  <button class="btn btn-clear" onclick="clearSerial()">⌫ Clear</button>
+  <div id="indicator" class="run-indicator"></div>
+  <span id="statusTxt" style="font-size:11px;color:#3a5070;margin-left:2px">idle</span>
+  <span class="tb-title">ESP32 Blockly Lab Simulator</span>
 </div>
 
 <div class="main">
-
-    <div class="left-panel">
-
-        <div id="blocklyDiv"></div>
-
-        <div class="serial-monitor" id="serial">
-ESP32 Blockly Simulator Ready...
-        </div>
-
+  <div class="left">
+    <div id="blocklyDiv"></div>
+    <div class="pane-bar"><div class="dot dot-green"></div>Serial Monitor</div>
+    <div class="serial" id="serial">
+      <span style="color:#1e3a5c">ESP32 Lab Simulator ready.</span><br>
+      <span style="color:#1e3a5c">Drag blocks to the workspace and press ▶ Run.</span><br>
     </div>
+  </div>
+  <div class="right">
+    <div class="sim">
+      <svg id="circuitSvg" viewBox="0 0 680 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
 
-    <div class="right-panel">
+        <!-- ── BG dots grid ── -->
+        <defs>
+          <pattern id="grid" width="22" height="22" patternUnits="userSpaceOnUse">
+            <circle cx="11" cy="11" r="0.7" fill="#111c30"/>
+          </pattern>
+        </defs>
+        <rect width="680" height="300" fill="#070c1a"/>
+        <rect width="680" height="300" fill="url(#grid)"/>
 
-        <div class="simulator">
+        <!-- ══════════════════════════════════════════
+             ESP32 DEVKIT V1 BOARD
+             Board: (12,8) → (134,292)  w=122 h=284
+        ═══════════════════════════════════════════ -->
 
-            <div class="esp32-board">
+        <!-- PCB body -->
+        <rect x="22" y="8" width="102" height="284" rx="7" fill="#1a4d24" stroke="#12371a" stroke-width="1.5"/>
+        <!-- PCB edge highlight -->
+        <rect x="22" y="8" width="102" height="284" rx="7" fill="none" stroke="#256b30" stroke-width="0.5"/>
 
-                <div class="board-label">
-                    ESP32 DEVKIT V1
-                </div>
+        <!-- Inner silk-screen border -->
+        <rect x="27" y="13" width="92" height="274" rx="5" fill="none" stroke="#1f5e28" stroke-width="0.6" stroke-dasharray="3,3"/>
 
-                <div class="gpio-pin gpio2"></div>
+        <!-- ── ESP32-WROOM-32 Module ── -->
+        <rect x="30" y="38" width="87" height="118" rx="3" fill="#3a4a50" stroke="#4a5c64" stroke-width="1"/>
+        <!-- Shield texture lines -->
+        <line x1="30" y1="48" x2="117" y2="48" stroke="#2e3d43" stroke-width="0.5"/>
+        <line x1="30" y1="58" x2="117" y2="58" stroke="#2e3d43" stroke-width="0.5"/>
+        <line x1="30" y1="68" x2="117" y2="68" stroke="#2e3d43" stroke-width="0.5"/>
+        <line x1="30" y1="78" x2="117" y2="78" stroke="#2e3d43" stroke-width="0.5"/>
+        <!-- Module label -->
+        <text x="73" y="102" text-anchor="middle" font-family="Arial" font-size="7" fill="#7a9aa8" font-weight="bold" letter-spacing="0.3">ESP32-WROOM-32</text>
+        <!-- Chip inside module -->
+        <rect x="44" y="82" width="59" height="42" rx="2" fill="#2a3540" stroke="#3a4a56" stroke-width="1"/>
+        <text x="73" y="107" text-anchor="middle" font-family="Arial" font-size="6" fill="#4a6a78">ESPRESSIF</text>
+        <!-- Antenna (right side of module, striped) -->
+        <rect x="102" y="40" width="15" height="114" rx="2" fill="#2a3540" stroke="#3a4a56" stroke-width="0.5"/>
+        <line x1="105" y1="45" x2="114" y2="45" stroke="#1a2530" stroke-width="1.5"/>
+        <line x1="105" y1="50" x2="114" y2="50" stroke="#1a2530" stroke-width="1.5"/>
+        <line x1="105" y1="55" x2="114" y2="55" stroke="#1a2530" stroke-width="1.5"/>
+        <line x1="105" y1="60" x2="114" y2="60" stroke="#1a2530" stroke-width="1.5"/>
+        <line x1="105" y1="65" x2="114" y2="65" stroke="#1a2530" stroke-width="1.5"/>
+        <line x1="105" y1="70" x2="114" y2="70" stroke="#1a2530" stroke-width="1.5"/>
+        <line x1="105" y1="75" x2="114" y2="75" stroke="#1a2530" stroke-width="1.5"/>
+        <line x1="105" y1="80" x2="114" y2="80" stroke="#1a2530" stroke-width="1.5"/>
+        <line x1="105" y1="85" x2="114" y2="85" stroke="#1a2530" stroke-width="1.5"/>
+        <line x1="105" y1="90" x2="114" y2="90" stroke="#1a2530" stroke-width="1.5"/>
+        <line x1="105" y1="95" x2="114" y2="95" stroke="#1a2530" stroke-width="1.5"/>
+        <line x1="105" y1="100" x2="114" y2="100" stroke="#1a2530" stroke-width="1.5"/>
+        <line x1="105" y1="105" x2="114" y2="105" stroke="#1a2530" stroke-width="1.5"/>
+        <line x1="105" y1="110" x2="114" y2="110" stroke="#1a2530" stroke-width="1.5"/>
+        <line x1="105" y1="115" x2="114" y2="115" stroke="#1a2530" stroke-width="1.5"/>
+        <line x1="105" y1="120" x2="114" y2="120" stroke="#1a2530" stroke-width="1.5"/>
+        <line x1="105" y1="125" x2="114" y2="125" stroke="#1a2530" stroke-width="1.5"/>
+        <line x1="105" y1="130" x2="114" y2="130" stroke="#1a2530" stroke-width="1.5"/>
+        <line x1="105" y1="135" x2="114" y2="135" stroke="#1a2530" stroke-width="1.5"/>
+        <line x1="105" y1="140" x2="114" y2="140" stroke="#1a2530" stroke-width="1.5"/>
+        <line x1="105" y1="145" x2="114" y2="145" stroke="#1a2530" stroke-width="1.5"/>
 
-                <div class="wire"></div>
+        <!-- ── CP2102 USB-UART chip ── -->
+        <rect x="32" y="166" width="28" height="20" rx="1" fill="#2a3540" stroke="#3a4a56" stroke-width="0.8"/>
+        <text x="46" y="179" text-anchor="middle" font-family="Arial" font-size="4.5" fill="#4a6a78">CP2102</text>
 
-                <div class="led-container">
-                    <div id="led" class="led"></div>
-                    <div style="margin-top:10px;">
-                        GPIO2 LED
-                    </div>
-                </div>
+        <!-- ── AMS1117 Voltage Reg ── -->
+        <rect x="86" y="166" width="22" height="14" rx="1" fill="#2a3540" stroke="#3a4a56" stroke-width="0.8"/>
+        <text x="97" y="176" text-anchor="middle" font-family="Arial" font-size="4" fill="#4a6a78">LDO</text>
 
-            </div>
+        <!-- ── EN Button (top-left of lower area) ── -->
+        <rect x="30" y="193" width="14" height="9" rx="2" fill="#1e2d3a" stroke="#3a5064" stroke-width="1"/>
+        <rect x="34" y="195" width="6" height="5" rx="1" fill="#2a3e50"/>
+        <text x="37" y="209" text-anchor="middle" font-family="Arial" font-size="5" fill="#3a6080">EN</text>
 
-        </div>
+        <!-- ── BOOT Button ── -->
+        <rect x="50" y="193" width="14" height="9" rx="2" fill="#1e2d3a" stroke="#3a5064" stroke-width="1"/>
+        <rect x="54" y="195" width="6" height="5" rx="1" fill="#2a3e50"/>
+        <text x="57" y="209" text-anchor="middle" font-family="Arial" font-size="5" fill="#3a6080">IO0</text>
 
-        <div class="code-output" id="codeOutput">
-// Generated JavaScript appears here
-        </div>
+        <!-- ── Small power LED ── -->
+        <circle cx="75" cy="197" r="3" fill="#003300" stroke="#005500" stroke-width="0.8"/>
+        <text x="75" y="209" text-anchor="middle" font-family="Arial" font-size="5" fill="#3a6080">PWR</text>
 
+        <!-- ── USB Micro connector ── -->
+        <rect x="43" y="275" width="29" height="16" rx="2" fill="#2a3540" stroke="#4a5c64" stroke-width="1"/>
+        <rect x="46" y="278" width="23" height="10" rx="1" fill="#1a252c" stroke="#3a4a56" stroke-width="0.5"/>
+        <text x="57" y="303" text-anchor="middle" font-family="Arial" font-size="5.5" fill="#3a6080">USB</text>
+
+        <!-- Board label -->
+        <text x="57" y="27" text-anchor="middle" font-family="Arial" font-size="7" fill="#4a8060" font-weight="bold" letter-spacing="0.2">ESP32 DEVKIT V1</text>
+
+        <!-- ══════════════════════════════
+             LEFT PIN HEADER (19 pins)
+             x=14-22, y=50..50+18*13.5
+        ══════════════════════════════ -->
+        <!-- Left pins: y starts 50, spacing 13.5 → 18*13.5=243, end y=293 -->
+        <!-- Labels on left side -->
+        <g font-family="Arial" font-size="5.5" fill="#3a6060" text-anchor="end">
+          <text x="12" y="54">3V3</text>
+          <text x="12" y="68">EN</text>
+          <text x="12" y="82">VP</text>
+          <text x="12" y="96">VN</text>
+          <text x="12" y="110">34</text>
+          <text x="12" y="124">35</text>
+          <text x="12" y="138">32</text>
+          <text x="12" y="152">33</text>
+          <text x="12" y="166">25</text>
+          <text x="12" y="180">26</text>
+          <text x="12" y="194">27</text>
+          <text x="12" y="208">14</text>
+          <text x="12" y="222">12</text>
+          <text x="12" y="236">GND</text>
+          <text x="12" y="250">13</text>
+          <text x="12" y="264">D9</text>
+          <text x="12" y="278">D10</text>
+        </g>
+        <!-- Left pin pads -->
+        <g fill="#b8960c" stroke="#d4a800" stroke-width="0.5">
+          <rect x="14" y="48" width="10" height="7" rx="1"/>
+          <rect x="14" y="62" width="10" height="7" rx="1"/>
+          <rect x="14" y="76" width="10" height="7" rx="1"/>
+          <rect x="14" y="90" width="10" height="7" rx="1"/>
+          <rect x="14" y="104" width="10" height="7" rx="1"/>
+          <rect x="14" y="118" width="10" height="7" rx="1"/>
+          <rect x="14" y="132" width="10" height="7" rx="1"/>
+          <rect x="14" y="146" width="10" height="7" rx="1"/>
+          <rect x="14" y="160" width="10" height="7" rx="1"/>
+          <rect x="14" y="174" width="10" height="7" rx="1"/>
+          <rect x="14" y="188" width="10" height="7" rx="1"/>
+          <rect x="14" y="202" width="10" height="7" rx="1"/>
+          <rect x="14" y="216" width="10" height="7" rx="1"/>
+          <rect x="14" y="230" width="10" height="7" rx="1"/>
+          <rect x="14" y="244" width="10" height="7" rx="1"/>
+          <rect x="14" y="258" width="10" height="7" rx="1"/>
+          <rect x="14" y="272" width="10" height="7" rx="1"/>
+        </g>
+
+        <!-- ══════════════════════════════
+             RIGHT PIN HEADER (19 pins)
+             x=122-130
+        ══════════════════════════════ -->
+        <!-- Right pin labels -->
+        <g font-family="Arial" font-size="5.5" fill="#3a6060" text-anchor="start">
+          <text x="135" y="54">GND</text>
+          <text x="135" y="68">23</text>
+          <text x="135" y="82">22</text>
+          <text x="135" y="96">TXD</text>
+          <text x="135" y="110">RXD</text>
+          <text x="135" y="124">21</text>
+          <text x="135" y="138">19</text>
+          <text x="135" y="152">18</text>
+          <text x="135" y="166">D5</text>
+          <text x="135" y="180">17</text>
+          <text x="135" y="194">16</text>
+          <text x="135" y="208">D4</text>
+          <text x="135" y="222">D0</text>
+          <!-- GPIO2 highlighted label -->
+          <text x="135" y="236" fill="#fbbf24" font-weight="bold">D2 ←</text>
+          <text x="135" y="250">15</text>
+          <text x="135" y="264">SD1</text>
+          <text x="135" y="278">VIN</text>
+        </g>
+        <!-- Right pin pads (normal) -->
+        <g fill="#b8960c" stroke="#d4a800" stroke-width="0.5">
+          <rect x="122" y="48" width="10" height="7" rx="1"/>
+          <rect x="122" y="62" width="10" height="7" rx="1"/>
+          <rect x="122" y="76" width="10" height="7" rx="1"/>
+          <rect x="122" y="90" width="10" height="7" rx="1"/>
+          <rect x="122" y="104" width="10" height="7" rx="1"/>
+          <rect x="122" y="118" width="10" height="7" rx="1"/>
+          <rect x="122" y="132" width="10" height="7" rx="1"/>
+          <rect x="122" y="146" width="10" height="7" rx="1"/>
+          <rect x="122" y="160" width="10" height="7" rx="1"/>
+          <rect x="122" y="174" width="10" height="7" rx="1"/>
+          <rect x="122" y="188" width="10" height="7" rx="1"/>
+          <rect x="122" y="202" width="10" height="7" rx="1"/>
+          <rect x="122" y="216" width="10" height="7" rx="1"/>
+          <!-- GND pin -->
+          <rect x="122" y="244" width="10" height="7" rx="1" fill="#4a4a4a" stroke="#666"/>
+          <rect x="122" y="258" width="10" height="7" rx="1"/>
+          <rect x="122" y="272" width="10" height="7" rx="1"/>
+        </g>
+        <!-- GPIO2 pin highlighted in gold/yellow -->
+        <rect x="122" y="230" width="10" height="7" rx="1" fill="#d97706" stroke="#fbbf24" stroke-width="1"/>
+
+
+        <!-- ═══════════════════════════════════════════════════
+             CIRCUIT WIRING
+             Signal line: y=234 (GPIO2 mid: 230+3.5=233.5≈234)
+             GND line:    y=248 (GND mid: 244+3.5=247.5≈248)
+        ═══════════════════════════════════════════════════ -->
+
+        <!-- ── Signal wire: GPIO2 → Resistor ── -->
+        <path id="wire1" d="M132,234 L230,234" stroke="#4a3a00" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+        <!-- ── Resistor component ── -->
+        <!-- Resistor body -->
+        <rect x="230" y="220" width="68" height="28" rx="4" fill="#1e1a0e" stroke="#4a3a00" stroke-width="1.5" id="resistorBody"/>
+        <!-- Resistor bands -->
+        <rect x="243" y="220" width="5" height="28" rx="1" fill="#c8a000" opacity="0.7"/>
+        <rect x="252" y="220" width="5" height="28" rx="1" fill="#8b0000" opacity="0.7"/>
+        <rect x="261" y="220" width="5" height="28" rx="1" fill="#8b0000" opacity="0.7"/>
+        <rect x="270" y="220" width="5" height="28" rx="1" fill="#b8860b" opacity="0.7"/>
+        <!-- Resistor label -->
+        <text x="264" y="214" text-anchor="middle" font-family="Arial" font-size="9" fill="#a07820" font-weight="bold">220Ω</text>
+
+        <!-- ── Signal wire: Resistor → LED ── -->
+        <path id="wire2" d="M298,234 L380,234" stroke="#4a3a00" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+        <!-- ── LED COMPONENT ──
+             Legs at y=234, body above
+             Anode (left/longer): x=392
+             Cathode (right/shorter): x=412
+        ── -->
+        <!-- LED glow halo (hidden when off) -->
+        <ellipse id="ledGlow" cx="402" cy="155" rx="55" ry="55" fill="#ff2000" opacity="0" filter="none"/>
+
+        <!-- LED cathode flat indicator band -->
+        <rect x="406" y="175" width="12" height="6" rx="1" fill="#1a0505" id="ledFlat"/>
+
+        <!-- LED body cylinder -->
+        <rect id="ledBody" x="386" y="130" width="32" height="50" rx="0" fill="#1a0505" stroke="#3a1010" stroke-width="1.5"/>
+
+        <!-- LED dome (main round top) -->
+        <ellipse id="ledDome" cx="402" cy="132" rx="18" ry="22" fill="#1a0505" stroke="#3a1010" stroke-width="1.5"/>
+
+        <!-- LED dome top flat edge clip -->
+        <rect x="384" y="130" width="36" height="5" fill="#1a0505"/>
+
+        <!-- LED inner lens (reflector look) -->
+        <ellipse id="ledLens" cx="402" cy="130" rx="10" ry="11" fill="#120303" stroke="#2a0808" stroke-width="0.8"/>
+
+        <!-- LED anode leg (longer, left) -->
+        <line id="ledAnodeLeg" x1="392" y1="180" x2="392" y2="234" stroke="#8a8a8a" stroke-width="2.2" stroke-linecap="round"/>
+        <!-- LED cathode leg (shorter, right — flat notch side) -->
+        <line id="ledCathodeLeg" x1="412" y1="180" x2="412" y2="234" stroke="#8a8a8a" stroke-width="2.2" stroke-linecap="round"/>
+
+        <!-- Leg bend to align to signal wire at y=234 -->
+        <!-- Anode connects to signal wire -->
+        <line x1="380" y1="234" x2="392" y2="234" stroke="#4a3a00" stroke-width="2.5" stroke-linecap="round" id="wireToAnode"/>
+
+        <!-- ── Signal wire continues after LED (cathode → right) ── -->
+        <path id="wire3" d="M412,234 L540,234" stroke="#2a2a2a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <!-- Down to GND level -->
+        <path id="wire4" d="M540,234 L540,248" stroke="#2a2a2a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <!-- GND rail back to board -->
+        <path id="wire5" d="M540,248 L132,248" stroke="#2a2a2a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+        <!-- GND symbol at right end -->
+        <line x1="540" y1="248" x2="540" y2="258" stroke="#2a2a2a" stroke-width="2"/>
+        <line x1="532" y1="259" x2="548" y2="259" stroke="#2a2a2a" stroke-width="2"/>
+        <line x1="535" y1="263" x2="545" y2="263" stroke="#2a2a2a" stroke-width="1.5"/>
+        <line x1="538" y1="267" x2="542" y2="267" stroke="#2a2a2a" stroke-width="1"/>
+
+        <!-- ── Light rays (hidden when off) ── -->
+        <g id="lightRays" opacity="0">
+          <line x1="402" y1="105" x2="402" y2="88" stroke="#ff6040" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="418" y1="110" x2="430" y2="96" stroke="#ff6040" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="424" y1="124" x2="440" y2="118" stroke="#ff6040" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="386" y1="110" x2="374" y2="96" stroke="#ff6040" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="380" y1="124" x2="364" y2="118" stroke="#ff6040" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="393" y1="104" x2="386" y2="88" stroke="#ff6040" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="411" y1="104" x2="418" y2="88" stroke="#ff6040" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+
+        <!-- ══ COMPONENT LABELS ══ -->
+        <text x="402" y="275" text-anchor="middle" font-family="Arial" font-size="8" fill="#3a5060">LED</text>
+        <text x="402" y="285" text-anchor="middle" font-family="Arial" font-size="7" fill="#2a3a48">(GPIO2)</text>
+        <text x="395" y="245" text-anchor="middle" font-family="Arial" font-size="7" fill="#2a3a48">+</text>
+        <text x="415" y="245" text-anchor="middle" font-family="Arial" font-size="7" fill="#2a3a48">-</text>
+
+        <!-- ── Voltage labels on wires ── -->
+        <text x="185" y="226" text-anchor="middle" font-family="Arial" font-size="7.5" fill="#3a2a00">GPIO2</text>
+        <text x="185" y="257" text-anchor="middle" font-family="Arial" font-size="7.5" fill="#1e2a2a">GND</text>
+
+        <!-- Circuit flow arrow -->
+        <polygon points="340,230 350,234 340,238" fill="#3a2a00" opacity="0.6"/>
+
+      </svg>
     </div>
-
+    <div class="pane-bar"><div class="dot dot-amber"></div>Generated JavaScript</div>
+    <div class="code-out" id="codeOutput">// Generated code appears here — click ⚡ JS or ▶ Run</div>
+  </div>
 </div>
 
+<!-- ═══════════════ BLOCKLY TOOLBOX ═══════════════ -->
 <xml id="toolbox" style="display:none">
-
-    <category name="LED" colour="160">
-
-        <block type="led_on"></block>
-        <block type="led_off"></block>
-        <block type="wait_seconds"></block>
-
-    </category>
-
-    <category name="Loops" colour="210">
-
-        <block type="controls_repeat_ext">
-            <value name="TIMES">
-                <shadow type="math_number">
-                    <field name="NUM">5</field>
-                </shadow>
-            </value>
-        </block>
-
-    </category>
-
+  <category name="💡  LED" colour="#16a34a">
+    <block type="led_on"></block>
+    <block type="led_off"></block>
+    <block type="led_toggle"></block>
+    <block type="led_blink">
+      <value name="TIMES"><shadow type="math_number"><field name="NUM">3</field></shadow></value>
+      <value name="DELAY_MS"><shadow type="math_number"><field name="NUM">400</field></shadow></value>
+    </block>
+    <block type="led_brightness">
+      <value name="LEVEL"><shadow type="math_number"><field name="NUM">50</field></shadow></value>
+    </block>
+  </category>
+  <category name="⏱  Timing" colour="#d97706">
+    <block type="wait_sec">
+      <value name="SEC"><shadow type="math_number"><field name="NUM">1</field></shadow></value>
+    </block>
+    <block type="wait_ms">
+      <value name="MS"><shadow type="math_number"><field name="NUM">500</field></shadow></value>
+    </block>
+  </category>
+  <category name="📟  Serial" colour="#2563eb">
+    <block type="serial_println">
+      <value name="TEXT"><shadow type="text"><field name="TEXT">Hello ESP32!</field></shadow></value>
+    </block>
+    <block type="serial_print">
+      <value name="TEXT"><shadow type="text"><field name="TEXT">value: </field></shadow></value>
+    </block>
+    <block type="serial_print_var">
+      <value name="VAL"><shadow type="math_number"><field name="NUM">0</field></shadow></value>
+    </block>
+  </category>
+  <category name="🔁  Loops" colour="#7c3aed">
+    <block type="loop_forever"></block>
+    <block type="controls_repeat_ext">
+      <value name="TIMES"><shadow type="math_number"><field name="NUM">5</field></shadow></value>
+    </block>
+    <block type="controls_whileUntil"></block>
+  </category>
+  <category name="🔀  Logic" colour="#0891b2">
+    <block type="controls_if"></block>
+    <block type="controls_ifelse"></block>
+    <block type="logic_compare"></block>
+    <block type="logic_operation"></block>
+    <block type="logic_negate"></block>
+    <block type="logic_boolean"></block>
+  </category>
+  <category name="📦  Variables" colour="#db2777" custom="VARIABLE"></category>
+  <category name="🔢  Math" colour="#059669">
+    <block type="math_number"><field name="NUM">0</field></block>
+    <block type="math_arithmetic"></block>
+    <block type="math_random_int">
+      <value name="FROM"><shadow type="math_number"><field name="NUM">0</field></shadow></value>
+      <value name="TO"><shadow type="math_number"><field name="NUM">100</field></shadow></value>
+    </block>
+    <block type="math_modulo"></block>
+  </category>
+  <category name="📝  Text" colour="#7f1d1d">
+    <block type="text"></block>
+    <block type="text_join"></block>
+    <block type="text_length"></block>
+  </category>
 </xml>
 
 <script>
+// ═══════════════════════════════════════════════════
+// CUSTOM BLOCK DEFINITIONS
+// ═══════════════════════════════════════════════════
 
-    const workspace = Blockly.inject('blocklyDiv', {
-        toolbox: document.getElementById('toolbox'),
-        theme: Blockly.Themes.Dark
-    });
+Blockly.Blocks['led_on'] = { init() {
+  this.appendDummyInput().appendField('🟢  Turn LED  ON');
+  this.setPreviousStatement(true); this.setNextStatement(true);
+  this.setColour(120); this.setTooltip('Turn the LED on — GPIO2 goes HIGH');
+}};
 
-    // -----------------------------
-    // CUSTOM BLOCKS
-    // -----------------------------
+Blockly.Blocks['led_off'] = { init() {
+  this.appendDummyInput().appendField('⚫  Turn LED  OFF');
+  this.setPreviousStatement(true); this.setNextStatement(true);
+  this.setColour(120); this.setTooltip('Turn the LED off — GPIO2 goes LOW');
+}};
 
-    Blockly.Blocks['led_on'] = {
-        init: function() {
-            this.appendDummyInput()
-                .appendField("Turn LED ON");
+Blockly.Blocks['led_toggle'] = { init() {
+  this.appendDummyInput().appendField('🔄  Toggle LED');
+  this.setPreviousStatement(true); this.setNextStatement(true);
+  this.setColour(120); this.setTooltip('Flip LED to opposite state');
+}};
 
-            this.setPreviousStatement(true);
-            this.setNextStatement(true);
+Blockly.Blocks['led_blink'] = { init() {
+  this.appendDummyInput().appendField('⚡  Blink LED');
+  this.appendValueInput('TIMES').setCheck('Number').appendField('times:');
+  this.appendValueInput('DELAY_MS').setCheck('Number').appendField('delay (ms):');
+  this.setInputsInline(false);
+  this.setPreviousStatement(true); this.setNextStatement(true);
+  this.setColour(120); this.setTooltip('Blink LED a set number of times with a delay between blinks');
+}};
 
-            this.setColour(160);
-        }
-    };
+Blockly.Blocks['led_brightness'] = { init() {
+  this.appendValueInput('LEVEL').setCheck('Number').appendField('💡  LED brightness (0–100):');
+  this.setInputsInline(true);
+  this.setPreviousStatement(true); this.setNextStatement(true);
+  this.setColour(120); this.setTooltip('Set LED brightness from 0 (off) to 100 (full)');
+}};
 
-    Blockly.Blocks['led_off'] = {
-        init: function() {
-            this.appendDummyInput()
-                .appendField("Turn LED OFF");
+Blockly.Blocks['wait_sec'] = { init() {
+  this.appendValueInput('SEC').setCheck('Number').appendField('⏳  Wait');
+  this.appendDummyInput().appendField('seconds');
+  this.setInputsInline(true);
+  this.setPreviousStatement(true); this.setNextStatement(true);
+  this.setColour(45); this.setTooltip('Pause for a number of seconds');
+}};
 
-            this.setPreviousStatement(true);
-            this.setNextStatement(true);
+Blockly.Blocks['wait_ms'] = { init() {
+  this.appendValueInput('MS').setCheck('Number').appendField('⏱  Wait');
+  this.appendDummyInput().appendField('milliseconds');
+  this.setInputsInline(true);
+  this.setPreviousStatement(true); this.setNextStatement(true);
+  this.setColour(45); this.setTooltip('Pause for milliseconds (1000ms = 1 second)');
+}};
 
-            this.setColour(160);
-        }
-    };
+Blockly.Blocks['serial_println'] = { init() {
+  this.appendValueInput('TEXT').appendField('📋  Serial.println');
+  this.setPreviousStatement(true); this.setNextStatement(true);
+  this.setColour(210); this.setTooltip('Print a line to the Serial Monitor');
+}};
 
-    Blockly.Blocks['wait_seconds'] = {
-        init: function() {
-            this.appendDummyInput()
-                .appendField("Wait")
-                .appendField(new Blockly.FieldNumber(1, 0), "SECONDS")
-                .appendField("seconds");
+Blockly.Blocks['serial_print'] = { init() {
+  this.appendValueInput('TEXT').appendField('📤  Serial.print');
+  this.setPreviousStatement(true); this.setNextStatement(true);
+  this.setColour(210); this.setTooltip('Print text without a new line');
+}};
 
-            this.setPreviousStatement(true);
-            this.setNextStatement(true);
+Blockly.Blocks['serial_print_var'] = { init() {
+  this.appendValueInput('VAL').setCheck('Number').appendField('🔢  Serial.print number');
+  this.setPreviousStatement(true); this.setNextStatement(true);
+  this.setColour(210); this.setTooltip('Print a number to the Serial Monitor');
+}};
 
-            this.setColour(60);
-        }
-    };
+Blockly.Blocks['loop_forever'] = { init() {
+  this.appendDummyInput().appendField('🔁  Repeat Forever');
+  this.appendStatementInput('DO').appendField('do:');
+  this.setPreviousStatement(true); this.setNextStatement(true);
+  this.setColour(290); this.setTooltip('Repeat the inner blocks forever until you press Stop');
+}};
 
-    // -----------------------------
-    // GENERATORS
-    // -----------------------------
+// ═══════════════════════════════════════════════════
+// CODE GENERATORS
+// ═══════════════════════════════════════════════════
 
-    const generator = Blockly.JavaScript;
+const gen = Blockly.JavaScript;
+const ORD = gen.ORDER_ATOMIC || 0;
 
-    generator.forBlock['led_on'] = function() {
-        return 'await setLED(true);\n';
-    };
+gen.forBlock['led_on']        = ()  => 'await setLED(true);\n';
+gen.forBlock['led_off']       = ()  => 'await setLED(false);\n';
+gen.forBlock['led_toggle']    = ()  => 'await toggleLED();\n';
+gen.forBlock['led_blink']     = b   => {
+  const t = gen.valueToCode(b,'TIMES',ORD)||'3';
+  const d = gen.valueToCode(b,'DELAY_MS',ORD)||'400';
+  return `await blinkLED(${t},${d});\n`;
+};
+gen.forBlock['led_brightness'] = b  => {
+  const lvl = gen.valueToCode(b,'LEVEL',ORD)||'50';
+  return `await setLEDBrightness(${lvl});\n`;
+};
+gen.forBlock['wait_sec']      = b   => `await sleep((${gen.valueToCode(b,'SEC',ORD)||'1'})*1000);\n`;
+gen.forBlock['wait_ms']       = b   => `await sleep(${gen.valueToCode(b,'MS',ORD)||'500'});\n`;
+gen.forBlock['serial_println'] = b  => `serialLog(${gen.valueToCode(b,'TEXT',ORD)||'""'},true);\n`;
+gen.forBlock['serial_print']  = b   => `serialLog(${gen.valueToCode(b,'TEXT',ORD)||'""'},false);\n`;
+gen.forBlock['serial_print_var'] = b => `serialLog(${gen.valueToCode(b,'VAL',ORD)||'0'},false);\n`;
+gen.forBlock['loop_forever']  = b   => {
+  const body = gen.statementToCode(b,'DO');
+  return `while(running){\n${body}  await sleep(10);\n}\n`;
+};
 
-    generator.forBlock['led_off'] = function() {
-        return 'await setLED(false);\n';
-    };
+// ═══════════════════════════════════════════════════
+// SIMULATION ENGINE
+// ═══════════════════════════════════════════════════
 
-    generator.forBlock['wait_seconds'] = function(block) {
-        const seconds = block.getFieldValue('SECONDS');
-        return `await sleep(${seconds * 1000});\n`;
-    };
+let running = false;
+let ledState = false;
+let ledBrightness = 100;
 
-    // -----------------------------
-    // SIMULATION ENGINE
-    // -----------------------------
+const $serial   = document.getElementById('serial');
+const $codeOut  = document.getElementById('codeOutput');
+const $indicator= document.getElementById('indicator');
+const $statusTxt= document.getElementById('statusTxt');
 
-    const led = document.getElementById("led");
-    const serial = document.getElementById("serial");
+// SVG refs
+const ledDome    = document.getElementById('ledDome');
+const ledBody    = document.getElementById('ledBody');
+const ledLens    = document.getElementById('ledLens');
+const ledGlow    = document.getElementById('ledGlow');
+const ledFlat    = document.getElementById('ledFlat');
+const lightRays  = document.getElementById('lightRays');
+const wire1      = document.getElementById('wire1');
+const wire2      = document.getElementById('wire2');
+const wire3      = document.getElementById('wire3');
+const wire4      = document.getElementById('wire4');
+const wire5      = document.getElementById('wire5');
+const wireAnode  = document.getElementById('wireToAnode');
 
-    let running = false;
+function setStatus(active, text) {
+  $indicator.classList.toggle('active', active);
+  $statusTxt.textContent = text;
+  $statusTxt.style.color = active ? '#22c55e' : '#3a5070';
+}
 
-    function log(msg) {
-        serial.innerHTML += "<br>> " + msg;
-        serial.scrollTop = serial.scrollHeight;
-    }
+function log(msg, color='#22c55e') {
+  $serial.innerHTML += `<span style="color:${color}">${msg}</span><br>`;
+  $serial.scrollTop = $serial.scrollHeight;
+}
 
-    async function setLED(state) {
+function serialLog(val, newline) {
+  const txt = String(val).replace(/</g,'&lt;');
+  if(newline) log(`<span style="color:#64748b">[Serial]</span> ${txt}`, '#f59e0b');
+  else        $serial.innerHTML += `<span style="color:#f59e0b">${txt}</span>`;
+}
 
-        if (state) {
-            led.classList.add("on");
-            log("GPIO2 -> HIGH");
-        } else {
-            led.classList.remove("on");
-            log("GPIO2 -> LOW");
-        }
+function updateLED(on, brightness) {
+  if(on) {
+    const alpha = (brightness/100)*0.55;
+    const dome  = brightness >= 80 ? '#ff2a00' : brightness >= 50 ? '#cc2200' : '#881400';
+    const body  = brightness >= 80 ? '#cc1a00' : '#7a1000';
+    ledDome.setAttribute('fill', dome);
+    ledDome.setAttribute('stroke','#ff4422');
+    ledBody.setAttribute('fill', body);
+    ledBody.setAttribute('stroke','#cc2200');
+    ledLens.setAttribute('fill','#ff3010');
+    ledLens.setAttribute('opacity','0.6');
+    ledFlat.setAttribute('fill', body);
+    ledGlow.setAttribute('opacity', String(alpha));
+    lightRays.setAttribute('opacity', String(Math.min(1, brightness/60)));
+    // Energise wires
+    wire1.setAttribute('stroke','#d97706');
+    wire2.setAttribute('stroke','#d97706');
+    wire3.setAttribute('stroke','#374151');
+    wire4.setAttribute('stroke','#374151');
+    wire5.setAttribute('stroke','#374151');
+    wireAnode.setAttribute('stroke','#d97706');
+  } else {
+    ledDome.setAttribute('fill','#1a0505');
+    ledDome.setAttribute('stroke','#3a1010');
+    ledBody.setAttribute('fill','#120303');
+    ledBody.setAttribute('stroke','#2a0808');
+    ledLens.setAttribute('fill','#120303');
+    ledLens.setAttribute('opacity','1');
+    ledFlat.setAttribute('fill','#1a0505');
+    ledGlow.setAttribute('opacity','0');
+    lightRays.setAttribute('opacity','0');
+    wire1.setAttribute('stroke','#2a2000');
+    wire2.setAttribute('stroke','#2a2000');
+    wire3.setAttribute('stroke','#1c1c1c');
+    wire4.setAttribute('stroke','#1c1c1c');
+    wire5.setAttribute('stroke','#1c1c1c');
+    wireAnode.setAttribute('stroke','#2a2000');
+  }
+}
 
-        await sleep(100);
-    }
+async function setLED(state) {
+  ledState = state;
+  updateLED(state, ledBrightness);
+  log(`GPIO2 → <span style="color:${state?'#fbbf24':'#4b5563'}">${state?'HIGH':'LOW '}</span>  │  LED <span style="color:${state?'#22c55e':'#ef4444'}">${state?'ON ':'OFF'}</span>`);
+  await sleep(60);
+}
 
-    function sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
+async function toggleLED() { await setLED(!ledState); }
 
-    function generateCode() {
+async function blinkLED(times, delayMs) {
+  for(let i=0; i<times && running; i++) {
+    await setLED(true); await sleep(delayMs);
+    await setLED(false); await sleep(delayMs);
+  }
+}
 
-        const code = generator.workspaceToCode(workspace);
+async function setLEDBrightness(level) {
+  ledBrightness = Math.max(0, Math.min(100, level));
+  if(level > 0) {
+    ledState = true;
+    updateLED(true, ledBrightness);
+    log(`PWM (GPIO2) → brightness <span style="color:#fbbf24">${ledBrightness}%</span>`);
+  } else {
+    await setLED(false);
+  }
+  await sleep(60);
+}
 
-        document.getElementById("codeOutput").textContent = code;
-    }
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
 
-    async function runCode() {
+function clearSerial() {
+  $serial.innerHTML='<span style="color:#1e3a5c">Serial monitor cleared.</span><br>';
+}
 
-        if (running) return;
+function generateCode() {
+  const code = gen.workspaceToCode(workspace);
+  $codeOut.textContent = code || '// Add blocks to the workspace first';
+  return code;
+}
 
-        running = true;
+async function runCode() {
+  if(running) return;
+  running = true;
+  ledBrightness = 100;
+  setStatus(true,'running');
+  log('─────────────────────────', '#1e3a5c');
+  log('▶  Simulation started', '#64748b');
+  const code = generateCode();
+  try {
+    await new Function(`return async()=>{\n${code}\n}`)()();
+  } catch(e) {
+    log(`✗ ERROR: <span style="color:#fca5a5">${e.message}</span>`);
+  }
+  running = false;
+  updateLED(false, 0);
+  ledState = false;
+  setStatus(false,'idle');
+  log('■  Simulation complete', '#64748b');
+  log('─────────────────────────', '#1e3a5c');
+}
 
-        generateCode();
+function stopCode() {
+  if(!running) return;
+  running = false;
+  updateLED(false, 0);
+  ledState = false;
+  setStatus(false,'stopped');
+  log('■  Stopped by user', '#64748b');
+  log('─────────────────────────', '#1e3a5c');
+}
 
-        log("Starting Blockly simulation...");
+// ═══════════════════════════════════════════════════
+// BLOCKLY WORKSPACE
+// ═══════════════════════════════════════════════════
 
-        const code = generator.workspaceToCode(workspace);
-
-        try {
-
-            const asyncFunction = new Function(`
-                return async () => {
-                    ${code}
-                }
-            `);
-
-            await asyncFunction()();
-
-        } catch(err) {
-
-            log("ERROR: " + err.message);
-        }
-
-        running = false;
-    }
-
-    function stopCode() {
-
-        running = false;
-
-        led.classList.remove("on");
-
-        log("Simulation stopped.");
-    }
-
+const workspace = Blockly.inject('blocklyDiv', {
+  toolbox: document.getElementById('toolbox'),
+  theme: Blockly.Themes.Dark,
+  scrollbars: true,
+  trashcan: true,
+  zoom: { controls: true, wheel: true, startScale: 0.85, maxScale: 2.5, minScale: 0.4, scaleSpeed: 1.2 },
+  grid: { spacing: 24, length: 3, colour: '#1a2744', snap: true }
+});
 </script>
-
 </body>
 </html>
