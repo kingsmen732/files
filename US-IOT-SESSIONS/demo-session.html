@@ -4,25 +4,31 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-<title>ESP32 LED Blink Simulator</title>
+<title>ESP32 Blockly Simulator</title>
+
+<script src="https://unpkg.com/blockly/blockly.min.js"></script>
 
 <style>
+    * {
+        box-sizing: border-box;
+    }
+
     body {
         margin: 0;
+        font-family: Arial, sans-serif;
         background: #0f172a;
         color: white;
-        font-family: Arial, sans-serif;
         overflow: hidden;
     }
 
     .topbar {
         height: 60px;
         background: #111827;
+        border-bottom: 1px solid #1e293b;
         display: flex;
         align-items: center;
         padding: 0 20px;
         gap: 10px;
-        border-bottom: 1px solid #1e293b;
     }
 
     button {
@@ -39,67 +45,96 @@
         background: #1d4ed8;
     }
 
-    .container {
+    .main {
         display: flex;
         height: calc(100vh - 60px);
     }
 
     .left-panel {
-        width: 300px;
-        background: #111827;
+        width: 50%;
         border-right: 1px solid #1e293b;
-        padding: 20px;
-        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
     }
 
     .right-panel {
+        width: 50%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #blocklyDiv {
+        height: 60%;
+        width: 100%;
+        background: #111827;
+    }
+
+    .simulator {
         flex: 1;
         position: relative;
+        background: #020617;
         display: flex;
         justify-content: center;
         align-items: center;
     }
 
-    .code-box {
-        background: #0b1220;
-        padding: 15px;
-        border-radius: 10px;
-        font-family: monospace;
-        white-space: pre;
-        overflow-x: auto;
-        line-height: 1.5;
-        color: #7dd3fc;
-        border: 1px solid #1e293b;
-    }
-
-    .board {
-        width: 500px;
-        height: 250px;
+    .esp32-board {
+        width: 420px;
+        height: 220px;
         background: #1e293b;
         border-radius: 20px;
         position: relative;
         box-shadow: 0 0 40px rgba(0,0,0,0.5);
     }
 
-    .esp-label {
+    .board-label {
         position: absolute;
-        top: 20px;
+        top: 15px;
         left: 20px;
-        font-size: 24px;
+        color: #cbd5e1;
+        font-size: 22px;
         font-weight: bold;
-        color: #94a3b8;
+    }
+
+    .gpio-pin {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #64748b;
+        position: absolute;
+    }
+
+    .gpio2 {
+        top: 90px;
+        left: 30px;
+    }
+
+    .wire {
+        position: absolute;
+        width: 180px;
+        height: 4px;
+        background: #facc15;
+        top: 96px;
+        left: 44px;
+        border-radius: 5px;
+    }
+
+    .led-container {
+        position: absolute;
+        top: 65px;
+        right: 60px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
 
     .led {
-        width: 50px;
-        height: 50px;
+        width: 60px;
+        height: 60px;
         border-radius: 50%;
         background: #220000;
-        position: absolute;
-        right: 60px;
-        top: 100px;
-        box-shadow: 0 0 10px rgba(255,0,0,0.2);
         transition: all 0.1s ease;
+        box-shadow: 0 0 10px rgba(255,0,0,0.2);
     }
 
     .led.on {
@@ -110,94 +145,188 @@
             0 0 60px red;
     }
 
-    .gpio-label {
-        position: absolute;
-        right: 55px;
-        top: 160px;
-        color: #cbd5e1;
-        font-size: 14px;
-    }
-
     .serial-monitor {
-        position: absolute;
-        bottom: 0;
-        width: 100%;
-        height: 140px;
-        background: #020617;
+        height: 40%;
+        background: #000;
         border-top: 1px solid #1e293b;
         padding: 10px;
-        box-sizing: border-box;
         overflow-y: auto;
         font-family: monospace;
         color: #22c55e;
     }
+
+    .code-output {
+        height: 100%;
+        background: #111827;
+        padding: 15px;
+        overflow: auto;
+        font-family: monospace;
+        color: #7dd3fc;
+        white-space: pre;
+    }
 </style>
 </head>
+
 <body>
 
 <div class="topbar">
-    <button onclick="startBlink()">▶ Run</button>
-    <button onclick="stopBlink()">■ Stop</button>
+    <button onclick="runCode()">▶ Run</button>
+    <button onclick="stopCode()">■ Stop</button>
+    <button onclick="generateCode()">⚡ Generate JS</button>
 </div>
 
-<div class="container">
+<div class="main">
 
     <div class="left-panel">
 
-        <h2>Arduino Code</h2>
+        <div id="blocklyDiv"></div>
 
-<div class="code-box">
-void setup() {
-  pinMode(2, OUTPUT);
-}
-
-void loop() {
-  digitalWrite(2, HIGH);
-  delay(500);
-
-  digitalWrite(2, LOW);
-  delay(500);
-}
-</div>
+        <div class="serial-monitor" id="serial">
+ESP32 Blockly Simulator Ready...
+        </div>
 
     </div>
 
     <div class="right-panel">
 
-        <div class="board">
+        <div class="simulator">
 
-            <div class="esp-label">ESP32 DEVKIT</div>
+            <div class="esp32-board">
 
-            <div id="led" class="led"></div>
+                <div class="board-label">
+                    ESP32 DEVKIT V1
+                </div>
 
-            <div class="gpio-label">
-                GPIO2 LED
+                <div class="gpio-pin gpio2"></div>
+
+                <div class="wire"></div>
+
+                <div class="led-container">
+                    <div id="led" class="led"></div>
+                    <div style="margin-top:10px;">
+                        GPIO2 LED
+                    </div>
+                </div>
+
             </div>
 
         </div>
 
-        <div class="serial-monitor" id="serial">
-ESP32 Simulator Ready...
+        <div class="code-output" id="codeOutput">
+// Generated JavaScript appears here
         </div>
 
     </div>
 
 </div>
 
+<xml id="toolbox" style="display:none">
+
+    <category name="LED" colour="160">
+
+        <block type="led_on"></block>
+        <block type="led_off"></block>
+        <block type="wait_seconds"></block>
+
+    </category>
+
+    <category name="Loops" colour="210">
+
+        <block type="controls_repeat_ext">
+            <value name="TIMES">
+                <shadow type="math_number">
+                    <field name="NUM">5</field>
+                </shadow>
+            </value>
+        </block>
+
+    </category>
+
+</xml>
+
 <script>
-    let interval = null;
-    let ledState = false;
+
+    const workspace = Blockly.inject('blocklyDiv', {
+        toolbox: document.getElementById('toolbox'),
+        theme: Blockly.Themes.Dark
+    });
+
+    // -----------------------------
+    // CUSTOM BLOCKS
+    // -----------------------------
+
+    Blockly.Blocks['led_on'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("Turn LED ON");
+
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+
+            this.setColour(160);
+        }
+    };
+
+    Blockly.Blocks['led_off'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("Turn LED OFF");
+
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+
+            this.setColour(160);
+        }
+    };
+
+    Blockly.Blocks['wait_seconds'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("Wait")
+                .appendField(new Blockly.FieldNumber(1, 0), "SECONDS")
+                .appendField("seconds");
+
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+
+            this.setColour(60);
+        }
+    };
+
+    // -----------------------------
+    // GENERATORS
+    // -----------------------------
+
+    const generator = Blockly.JavaScript;
+
+    generator.forBlock['led_on'] = function() {
+        return 'await setLED(true);\n';
+    };
+
+    generator.forBlock['led_off'] = function() {
+        return 'await setLED(false);\n';
+    };
+
+    generator.forBlock['wait_seconds'] = function(block) {
+        const seconds = block.getFieldValue('SECONDS');
+        return `await sleep(${seconds * 1000});\n`;
+    };
+
+    // -----------------------------
+    // SIMULATION ENGINE
+    // -----------------------------
 
     const led = document.getElementById("led");
     const serial = document.getElementById("serial");
 
-    function log(message) {
-        serial.innerHTML += "<br>> " + message;
+    let running = false;
+
+    function log(msg) {
+        serial.innerHTML += "<br>> " + msg;
         serial.scrollTop = serial.scrollHeight;
     }
 
-    function setLED(state) {
-        ledState = state;
+    async function setLED(state) {
 
         if (state) {
             led.classList.add("on");
@@ -206,28 +335,60 @@ ESP32 Simulator Ready...
             led.classList.remove("on");
             log("GPIO2 -> LOW");
         }
+
+        await sleep(100);
     }
 
-    function startBlink() {
-
-        if (interval) return;
-
-        log("Starting LED blink simulation...");
-
-        interval = setInterval(() => {
-            setLED(!ledState);
-        }, 500);
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    function stopBlink() {
+    function generateCode() {
 
-        clearInterval(interval);
-        interval = null;
+        const code = generator.workspaceToCode(workspace);
 
-        setLED(false);
+        document.getElementById("codeOutput").textContent = code;
+    }
+
+    async function runCode() {
+
+        if (running) return;
+
+        running = true;
+
+        generateCode();
+
+        log("Starting Blockly simulation...");
+
+        const code = generator.workspaceToCode(workspace);
+
+        try {
+
+            const asyncFunction = new Function(`
+                return async () => {
+                    ${code}
+                }
+            `);
+
+            await asyncFunction()();
+
+        } catch(err) {
+
+            log("ERROR: " + err.message);
+        }
+
+        running = false;
+    }
+
+    function stopCode() {
+
+        running = false;
+
+        led.classList.remove("on");
 
         log("Simulation stopped.");
     }
+
 </script>
 
 </body>
